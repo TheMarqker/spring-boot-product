@@ -1,86 +1,67 @@
 package com.sha.springbootproduct.security;
 
-import com.sha.springbootproduct.model.Role;
-import com.sha.springbootproduct.security.jwt.JWTAuthorizationFilter;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.BeanIds;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import com.sha.springbootproduct.model.User;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.Collection;
+import java.util.Set;
 
-@Configuration
-@EnableWebSecurity
-public class SecurityConfig extends WebSecurityConfigurerAdapter
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class UserPrinciple implements UserDetails
 {
-    @Autowired
-    private CustomUserDetailsService customUserDetailsService;
+    private Long id;
+    private String username;
+    transient private String password; // don't show up on serialized places.
+    transient private User user; // user for only login operation, don't use in JWT.
+    private Set<GrantedAuthority> authorities;
 
     @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception
+    public Collection<? extends GrantedAuthority> getAuthorities()
     {
-        auth.userDetailsService(customUserDetailsService).passwordEncoder(passwordEncoder());
-    }
-
-    @Override
-    @Bean(BeanIds.AUTHENTICATION_MANAGER)
-    public AuthenticationManager authenticationManagerBean() throws Exception
-    {
-        return super.authenticationManagerBean();
+        return authorities;
     }
 
     @Override
-    protected void configure(HttpSecurity http) throws Exception
+    public String getPassword()
     {
-        http.cors();
-        http.csrf().disable();
-        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-
-        http.authorizeRequests()
-                .antMatchers("/api/authentication/**").permitAll()
-                .antMatchers(HttpMethod.GET, "/api/product").permitAll()
-                .antMatchers("/api/product/**").hasRole(Role.ADMIN.name())
-                .anyRequest().authenticated();
-
-        http.addFilterBefore(jwtAuthorizationFilter(), UsernamePasswordAuthenticationFilter.class);
+        return password;
     }
 
-    //Why don't we describe it as a component, because of scope.
-    @Bean
-    public JWTAuthorizationFilter jwtAuthorizationFilter()
+    @Override
+    public String getUsername()
     {
-        return new JWTAuthorizationFilter();
+        return username;
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder()
+    @Override
+    public boolean isAccountNonExpired()
     {
-        return new BCryptPasswordEncoder();
+        return true;
     }
 
-    @Bean
-    public WebMvcConfigurer corsConfigurer()
+    @Override
+    public boolean isAccountNonLocked()
     {
-        return new WebMvcConfigurer()
-        {
-            @Override
-            public void addCorsMappings(CorsRegistry registry)
-            {
-                registry.addMapping("/**")
-                        .allowedOrigins("*")
-                        .allowedMethods("*");
-            }
-        };
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired()
+    {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled()
+    {
+        return true;
     }
 }
